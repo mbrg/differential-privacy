@@ -35,6 +35,55 @@ def test_generate_database(iters=1000):
         assert (r[0] == np.sum(db.data))
 
 
+def test_query_copy():
+
+    # generate database
+    db = generate_database(m=20, n=10, exact_number=True)
+    uni = db.uni
+
+    # generate query
+    query = linear_query(uni)
+
+    # copy query
+    cquery = query.copy()
+
+    # change and verify independence
+    query._uni.objects = [1,]
+    assert (1 != len(cquery._uni.objects))
+
+
+def test_utility_copy():
+    # generate database
+    db = generate_database(m=20, n=10, exact_number=True)
+    uni = db.uni
+
+    r = np.random.randint(0, 1000, 4)
+    db = generate_database(r[0], r[1] + 1, r[2], r[2] + r[3] + 1, False)
+    utility, umat = categorical_linear_query(db.uni, return_underlying_matrix=True)
+
+    # generate utility
+    utility = categorical_linear_query(uni)
+
+    # copy query
+    cutility = utility.copy()
+
+    # change universe and verify independence
+    utility._uni.objects = [1, ]
+    assert (1 != len(cutility._uni.objects))
+
+
+def test_database_copy():
+    # generate database
+    db = generate_database(m=20, n=10, exact_number=True)
+
+    # copy database
+    cdb = db.copy()
+
+    # change and verify independence
+    db.uni.objects = [1, ]
+    assert (10 == len(cdb.uni.objects))
+
+
 def test_linear_query_evaluation(iters=1000):
 
     for i in range(iters):

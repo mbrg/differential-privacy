@@ -70,6 +70,12 @@ class Query(object):
             self._dim= self._eval_dim()
         return self._dim
 
+    def copy(self):
+        """
+        return an independent copy of self
+        """
+        return Query(self._uni.copy(), self._func, dim=self._dim, sensitivity=self._sensitivity)
+
 
 class Utility(object):
     def __init__(self, uni, categories, func, sensitivity=None):
@@ -130,3 +136,9 @@ class Utility(object):
         if self._sensitivity is None:
             self._sensitivity = self._eval_sensitivity()
         return self._sensitivity
+
+    def copy(self):
+        """
+        return an independent copy of self
+        """
+        return Utility(self._uni.copy(), self.categories, self._func, sensitivity=self._sensitivity)

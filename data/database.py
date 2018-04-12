@@ -35,6 +35,12 @@ class Universe(object):
     def size(self):
         return self.objects.shape[0]
 
+    def copy(self):
+        """
+        return an independent copy of self
+        """
+        return Universe(self.objects[:])
+
 
 class Database(object):
     REPS = ('histogram', 'probability')
@@ -58,3 +64,9 @@ class Database(object):
             self.data = normalize(self.data)
         if self.rep == 'probability' and rep == 'histogram':
             raise Exception('Cannot change representation from probability to histogram.')
+
+    def copy(self):
+        """
+        return an independent copy of self
+        """
+        return Database(self.data[:], self.rep, self.uni.copy())
