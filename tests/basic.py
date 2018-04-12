@@ -1,5 +1,5 @@
 import numpy as np
-from tests.mock import generate_database, linear_query
+from tests.mock import generate_database, linear_query, categorical_linear_query
 
 
 def test_database_rep_change():
@@ -54,3 +54,27 @@ def test_linear_query_sensitivity(func_iters=10, db_iters=10):
         query = linear_query(db.uni)
 
         assert (1 >= query.eval_sensitivity(db_iters, random_db_size=r[0]))
+
+
+def test_utility_evaluation(iters=10):
+
+    for i in range(iters):
+
+        r = np.random.randint(0, 1000, 4)
+        db = generate_database(r[0], r[1] + 1, r[2], r[2] + r[3] + 1, False)
+        utility, umat = categorical_linear_query(db.uni, return_underlying_matrix=True)
+
+        for c in utility._categories:
+            assert (np.inner(db.data, umat[:, c]) == utility.value(db, c))
+
+
+def test_utility_sensitivity(func_iters=10, db_iters=10):
+
+    for i in range(func_iters):
+
+        r = np.random.randint(0, 100, 4)
+        db = generate_database(r[0], r[1] + 1, r[2], r[2] + r[3] + 1, False)
+        utility = categorical_linear_query(db.uni)
+
+        assert (1 >= utility.eval_sensitivity(db_iters, random_db_size=r[0]))
+
