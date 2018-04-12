@@ -3,7 +3,7 @@ from data.database import Universe
 
 
 class Query(object):
-    def __init__(self, uni, func, sensitivity=None):
+    def __init__(self, uni, func, dim=None, sensitivity=None):
         assert (isinstance(uni, Universe))
         assert (callable(func))
 
@@ -11,9 +11,10 @@ class Query(object):
         self._func = func
 
         # lazy calculated attributed
+        self._dim = dim
         self._sensitivity = sensitivity
 
-    def eval_sensitivity(self, num_trials=1, random_db_size=None):
+    def _eval_sensitivity(self, num_trials=1, random_db_size=None):
         """
         Evaluates query sensitivity by generating num_trials dbs and calculating their sensitivity.
         If random_db_size is provided, it is used to generate the dbs. Otherwise - Universe size is used.
@@ -24,7 +25,7 @@ class Query(object):
 
         for j in range(num_trials):
 
-            # create a new random
+            # create a new random database
             data = self._uni.random_db(m).data
             perturb = data[:]
 
@@ -46,8 +47,28 @@ class Query(object):
     @property
     def sensitivity(self):
         if self._sensitivity is None:
-            self._sensitivity = self.eval_sensitivity()
+            self._sensitivity = self._eval_sensitivity()
         return self._sensitivity
+
+    def _eval_dim(self):
+        """
+        Obtain query output dimension by triggering it on a random input.
+        """
+
+        # create a new random database
+        db = self._uni.random_db(self._uni.size)
+
+        # trigger query
+        result = self.value(db)
+
+        dim = 1 if isinstance(result, (int, float)) else result.shape[0]
+        return dim
+
+    @property
+    def dim(self):
+        if self._dim is None:
+            self._dim= self._eval_dim()
+        return self._dim
 
 
 class Utility(object):
@@ -55,14 +76,14 @@ class Utility(object):
         assert (isinstance(uni, Universe))
         assert (callable(func))
 
+        self.categories = categories
         self._uni = uni
-        self._categories = categories
         self._func = func
 
         # lazy calculated attributed
         self._sensitivity = sensitivity
 
-    def eval_sensitivity(self, num_trials=1, random_db_size=None):
+    def _eval_sensitivity(self, num_trials=1, random_db_size=None):
         """
         Evaluates utility sensitivity by generating num_trials dbs and calculating their sensitivity.
         If random_db_size is provided, it is used to generate the dbs. Otherwise - Universe size is used.
@@ -78,7 +99,7 @@ class Utility(object):
             perturb = data[:]
 
             # for each category
-            for c in self._categories:
+            for c in self.categories:
 
                 for i in range(self._uni.size):
                     for p in [1, -1]:
@@ -94,12 +115,18 @@ class Utility(object):
 
     def value(self, db, cat):
 
-        assert (cat in self._categories)
+        assert (cat in self.categories)
 
         return self._func(db, cat)
+
+    def optimal(self, db):
+        """
+        Optimal utility value for this db
+        """
+        return max([self.value(db, c) for c in self.categories])
 
     @property
     def sensitivity(self):
         if self._sensitivity is None:
-            self._sensitivity = self.eval_sensitivity()
+            self._sensitivity = self._eval_sensitivity()
         return self._sensitivity

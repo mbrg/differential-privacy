@@ -44,6 +44,6 @@ def categorical_linear_query(uni, return_underlying_matrix=False):
 
     if return_underlying_matrix:
         # for testing
-        return Utility(uni, list(range(num_categories)), func), categories_to_uni
+        return Utility(uni, list(range(num_categories)), func, sensitivity=1), categories_to_uni
     else:
-        return Utility(uni, list(range(num_categories)), func)
+        return Utility(uni, list(range(num_categories)), func, sensitivity=1)
