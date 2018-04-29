@@ -1,6 +1,7 @@
 import numpy as np
 from tests.mock import generate_database, linear_query, categorical_linear_query
-from mechanism.basic import laplace, exponential
+from mechanism.basic import laplace, exponential, report_noisy_max
+from data.query import Query
 
 
 def test_database_rep_change():
@@ -52,6 +53,30 @@ def test_query_copy():
     assert (1 != len(cquery._uni.objects))
 
 
+def test_query_dim_evaluation(iters=10):
+
+    # random query dimension
+    query_dim = np.random.randint(1, 20)
+
+    for i in range(iters):
+
+        # generate random database
+        r = np.random.randint(0, 1000, 4)
+        db = generate_database(r[0], r[1] + 1, r[2], r[2] + r[3] + 1, False)
+
+        # generate multiple one-dimensional linear query
+        queries = []
+        for j in range(query_dim):
+            queries.append(linear_query(db.uni))
+
+        # generate multiple-dimension linear query
+        func = lambda x: np.array([q._func(x) for q in queries])
+        multidim_query = Query(db.uni, func, dim=query_dim, sensitivity=query_dim)
+
+        # test eval dim
+        assert (multidim_query.dim == query_dim)
+
+
 def test_utility_copy():
     # generate database
     db = generate_database(m=20, n=10, exact_number=True)
@@ -91,6 +116,7 @@ def test_linear_query_evaluation(iters=1000):
         # generate random database
         r = np.random.randint(0, 1000, 4)
         db = generate_database(r[0], r[1] + 1, r[2], r[2] + r[3] + 1, False)
+
         query, qvec = linear_query(db.uni, return_underlying_vector=True)
 
         assert (np.inner(qvec, db.data) == query.value(db))
@@ -188,3 +214,36 @@ def test_exponential_utility_on_linear_queries(iters=10, exp_samples=10, eps=1e-
         # P[u(db,c) <= utility.optimal(db) - (2 * utility.sensitivity / eps) (ln(|utility.categories|) + t)] <= e^-t
         # we use (bad_case_cntr / lap_samples) as an estimation for the probability of a too large error
         assert (np.exp(-t) >= (bad_case_cntr / exp_samples))
+
+
+def test_report_noise_max(iters=10, rnm_samples=10, query_dim=5, eps=1e-5):
+
+    for i in range(iters):
+        # generate random database
+        r = np.random.randint(0, 1000, 4)
+        db = generate_database(r[0], r[1] + 1, r[2], r[2] + r[3] + 1, False)
+
+        # generate multiple one-dimensional linear query
+        queries = []
+        for j in range(query_dim):
+            queries.append(linear_query(db.uni))
+
+        # test one dimensional RNM
+        assert (0 == report_noisy_max(db, queries[0], eps))
+
+        # generate multiple-dimension linear query
+        func = lambda x: np.array([q._func(x) for q in queries])
+        multidim_query = Query(db.uni, func, dim=query_dim, sensitivity=query_dim)
+        true_values = [q.value(db) for q in queries]
+        true_argmax = np.argmax(true_values)
+
+        # sample multi-dimensional RNM values to estimate the probability of error
+        bad_case_cntr = 0
+        for j in range(rnm_samples):
+            noise_max = report_noisy_max(db, multidim_query, eps)
+            if noise_max != true_argmax:
+                print('VALUES', true_values)
+                print('ARGMAX', true_argmax)
+                print('RNM', noise_max)
+                bad_case_cntr += 1
+        # TODO add RNM guaranties
