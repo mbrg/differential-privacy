@@ -76,6 +76,9 @@ class Query(object):
         """
         return Query(self._uni.copy(), self._func, dim=self._dim, sensitivity=self._sensitivity)
 
+    def __str__(self):
+        return '[Query (uni=%s, dim=%d, sensitivity=%.2f)]' % (self._uni, self._dim, self._sensitivity)
+
 
 class Utility(object):
     def __init__(self, uni, categories, func, sensitivity=None):
@@ -142,3 +145,6 @@ class Utility(object):
         return an independent copy of self
         """
         return Utility(self._uni.copy(), self.categories, self._func, sensitivity=self._sensitivity)
+
+    def __str__(self):
+        return '[Utility (uni=%s, num_categories=%d, sensitivity=%.2f)]' % (self._uni, len(self.categories), self._sensitivity)

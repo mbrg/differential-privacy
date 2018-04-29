@@ -41,6 +41,9 @@ class Universe(object):
         """
         return Universe(self.objects[:])
 
+    def __str__(self):
+        return '[Universe (size=%d)]' % self.size
+
 
 class Database(object):
     REPS = ('histogram', 'probability')
@@ -70,3 +73,6 @@ class Database(object):
         return an independent copy of self
         """
         return Database(self.data[:], self.rep, self.uni.copy())
+
+    def __str__(self):
+        return '[Database (data=%s, rep=%s, uni=%s)]' % (self.data.shape, self.rep, self.uni)

@@ -38,7 +38,7 @@ def linear_query(uni, return_underlying_vector=False):
 
 def categorical_linear_query(uni, return_underlying_matrix=False):
 
-    num_categories = np.random.randint(low=0, high=50)
+    num_categories = np.random.randint(low=1, high=50)
     categories_to_uni = np.random.uniform(low=0.0, high=1.0, size=(uni.size, num_categories))
     func = lambda db, cat: np.inner(db.data, categories_to_uni[:, cat])
 
