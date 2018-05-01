@@ -216,7 +216,7 @@ def test_exponential_utility_on_linear_queries(iters=10, exp_samples=10, eps=1e-
         assert (np.exp(-t) >= (bad_case_cntr / exp_samples))
 
 
-def test_report_noise_max(iters=10, rnm_samples=10, query_dim=5, eps=1e-5):
+def test_report_noise_max(iters=10, rnm_samples=10, query_dim=5, eps=1e-5, beta=1e-5):
 
     for i in range(iters):
         # generate random database
@@ -237,13 +237,17 @@ def test_report_noise_max(iters=10, rnm_samples=10, query_dim=5, eps=1e-5):
         true_values = [q.value(db) for q in queries]
         true_argmax = np.argmax(true_values)
 
+        # verify mechanism accuracy guarantee
+        acceptable_err = np.log(1 / beta) / eps
+
         # sample multi-dimensional RNM values to estimate the probability of error
         bad_case_cntr = 0
         for j in range(rnm_samples):
-            noise_max = report_noisy_max(db, multidim_query, eps)
-            if noise_max != true_argmax:
-                print('VALUES', true_values)
-                print('ARGMAX', true_argmax)
-                print('RNM', noise_max)
+            noise_argmax = report_noisy_max(db, multidim_query, eps)
+            if true_values[noise_argmax] > true_values[true_argmax]:
                 bad_case_cntr += 1
-        # TODO add RNM guaranties
+
+        # We know from the Report Noise Max guaranties that
+        # P[max_i |y[true_argmax] - t[rnm_argmax]| >= log(1/beta)(1/eps)] <= beta
+        # we use (bad_case_cntr / lap_samples) as an estimation for the probability of a too large error
+        assert (beta >= (bad_case_cntr / rnm_samples))

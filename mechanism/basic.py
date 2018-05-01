@@ -78,8 +78,14 @@ def report_noisy_max(db, query, eps=1e-5):
             Otherwise, return a noisy version of arg.max(query(db))
     Guaranties:
         1. (eps,0) Differential Privacy
+        2. Accuracy:
+           Let func: N ^ |Universe| -> R^k
+           Denote y = func(db)
+                  true_argmax = argmax(y)
+                  rnm_argmax = report_noisy_max(db, func, eps)
+           Then forall beta in (0,1]
+                  P[max_i |y[true_argmax] - t[rnm_argmax]| >= log(1/beta)(1/eps)] <= beta
     """
-    # TODO add accuracy guaranties and test
 
     assert (isinstance(db, Database))
     assert (isinstance(query, Query))
