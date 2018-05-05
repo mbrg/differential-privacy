@@ -61,7 +61,7 @@ def exponential(db, utility, eps=1e-5):
     weights = np.exp(consts * evals)
 
     # normalize to distribution and sample
-    res = np.random.choice(utility.categories, p=normalize(weights, norm_ord=1))
+    res = np.random.choice(utility.categories, p=normalize(weights, ord=1))
 
     return res
 
