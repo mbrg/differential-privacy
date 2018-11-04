@@ -10,6 +10,7 @@ class OnlineCurator(object):
 
         self._db = db
         self._num_queries = num_queries
+        self._answered = 0
 
     def eval(self, query):
         raise NotImplementedError

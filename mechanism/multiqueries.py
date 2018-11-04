@@ -86,7 +86,6 @@ class AT(OnlineCurator):
             self._sigma = lambda e: np.sqrt(32*num_at_queries*np.log(1/delta))/e
         self._pthresh = np.random.laplace(loc=thresh, scale=self._sigma(self._eps1))
         self._at_answered = 0
-        self._answered = 0
 
     def value(self, query):
 
@@ -111,3 +110,85 @@ class AT(OnlineCurator):
         return '[AT (db=%s, num_at_queries=%s)]' % (self._db, self._num_queries)
 
 
+class PMW(OnlineCurator):
+    """
+    Goal:
+        The Private Multiplicative Weights mechanism is a DP method for answering multiple numerical queries by
+         holding and improving an estimation of the database
+    Guaranties:
+        1. (eps,delta) Differential Privacy
+        2. Accuracy:
+           Let f_1,..f_k be a series of queries s.t |{f_i(db) >= T-alpha}| <= num_at_queries
+               k = num_queries
+               |u| = db.uni.size
+           Then for
+              delta=0 =>
+                 alpha=(db.norm^(2/3)/eps^(1/3)) * [(36 * log(|u|) * (log(k) + log((32(log(|u|))^(1/3) * db.norm^(2/3))/beta))]
+              delta>0 =>
+                 alpha=[db.norm*(1/eps)(2 + 32*sqrt(2))sqrt(log(|u|)log(1/delta))(log(k) + log((32(log(|u|))]^(1/2)
+           With probability 1-beta
+                  |f_i(db)-ans_i(db)| <= 3*alpha
+    """
+    def __init__(self, db, num_queries, eps, delta, alpha, beta):
+        # verify representation
+        assert(db.rep == 'histogram')
+        db.change_representation('probability')
+
+        super().__init__(db, num_queries)
+
+        # init uniform hypothesis
+        self._at_answered = 0
+        self._h = Database(normalize(np.ones(db.data.shape), ord=1), 'probability', db.uni)
+
+        # init AboveThreshold
+        c = (4 * np.log(db.uni.size)) / np.power(alpha, 2)
+        dbnrm = db.norm
+        if delta==0:
+            T = (1 / (eps * dbnrm)) * 18 * c * (np.log(2 * num_queries) + np.log((4 * c) / beta))
+        else:
+            T = (1 / (eps * dbnrm)) * (2 + 32 * np.sqrt(2)) * np.sqrt(c * np.log(2/delta)) * (np.log(num_queries) + np.log((4 * c) / beta))
+        self._at = AT(db, 2*num_queries, c, T, eps, delta)
+
+    def value(self, query):
+
+        assert (self._answered < self._num_queries), "Maximal number of queries exceeded"
+        assert (query.dim == 1)
+
+        # noisy error
+        q_h = query.value(self._h)
+        f1 = lambda d: query.value(d) - q_h
+        f2 = lambda d: q_h - query.value(d)
+        q1 = Query(self._db.uni, f1, dim=1, sensitivity=1 / self._db.norm)
+        q2 = Query(self._db.uni, f2, dim=1, sensitivity=1 / self._db.norm)
+        e1 = self._at.value(q1)
+        e2 = self._at.value(q2)
+
+        # answer and update
+        self._answered += 1
+        if e1 is None and e2 is None:
+            res = q_h
+        else:
+            if e2 is None:
+                res = q_h + e1
+            else: # e1 is None
+                res = q_h - e2
+            self._h = self._mw_update(self._h, query, res)
+            self._at_answered += 1
+        return res
+
+    def _mw_update(self, db, query, vals, etha=1e-4):
+
+        # directed query value
+        y = query.value(db)
+        r = (vals < y)*y + (vals >= y)*(1-y)
+
+        # next Database
+        new_xp = np.multiply(np.exp(-etha*r), db.data)
+        new_x = normalize(new_xp, ord=1)
+        new_db = Database(new_x , 'probability', db.uni)
+        new_db._norm = db.norm
+
+        return new_db
+
+    def __str__(self):
+        return '[PMW (db=%s, num_queries=%s)]' % (self._db, self._num_queries)

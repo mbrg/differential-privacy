@@ -1,5 +1,5 @@
 import numpy as np
-from misc.vectors import normalize
+from misc.vectors import normalize, norm
 
 
 class Universe(object):
@@ -59,14 +59,30 @@ class Database(object):
         self.rep = rep
         self.uni = uni
 
+        # lazy calculated attributed
+        self._norm = None
+
     def change_representation(self, rep):
 
         assert (rep in Database.REPS)
 
         if self.rep == 'histogram' and rep == 'probability':
+            _ = self.norm  # trigger norm evaluation
             self.data = normalize(self.data)
         if self.rep == 'probability' and rep == 'histogram':
-            raise Exception('Cannot change representation from probability to histogram.')
+            if self._norm is None:
+                raise Exception('Cannot change representation from probability to histogram without _norm.')
+            else:
+                self.data = self.norm * self.data
+
+    def _eval_norm(self):
+        return norm(self.data, ord=1) if self.rep == 'histogram' else None
+
+    @property
+    def norm(self):
+        if self._norm is None:
+            self._norm= self._eval_norm()
+        return self._norm
 
     def copy(self):
         """
