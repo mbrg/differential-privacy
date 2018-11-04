@@ -1,6 +1,6 @@
 import numpy as np
 
-from mechanism.multiqueries import small_db, AT
+from mechanism.multiqueries import small_db, AT, PMW
 from misc.vectors import normalize, norm
 from tests.mock import generate_database, linear_query
 
@@ -40,7 +40,7 @@ def test_smalldb(iters=10, num_queries=5, smalldb_samples=10, eps=1e-5, alpha=1e
         assert (beta >= (bad_case_cntr / smalldb_samples))
 
 
-def test_at(iters=10, at_samples=10, eps=1e-5, alpha=1e-2):
+def test_above_treshold(iters=10, at_samples=10, eps=1e-5, alpha=1e-2):
 
     for i in range(iters):
         # generate random database
@@ -75,3 +75,39 @@ def test_at(iters=10, at_samples=10, eps=1e-5, alpha=1e-2):
 
         assert (beta >= (bad_case_cntr / (at_samples*num_queries)))
 
+
+def test_pmw(iters=10, num_queries=10, pmw_samples=10, eps=.15, delta=.05, beta=0.90):
+
+    for i in range(iters):
+        # generate random database
+        db_size, uni_size = np.random.randint(2000, 3000, 2)
+        db = generate_database(db_size, uni_size // 10, exact_number=True)
+
+        # generate multiple one-dimensional linear query
+        queries = []
+        for j in range(num_queries):
+            queries.append(linear_query(db.uni))
+
+            # db.rep == 'probability', so query sensitivity should be normalized
+            queries[-1]._sensitivity = 1 / db.norm
+
+        # verify mechanism accuracy guarantee
+        dbnrm = db.norm
+        nf = (1 / (dbnrm * eps)) * (2 + 32 * np.sqrt(2))
+        lg_u = np.log(db.uni.size)
+        lg_d = np.log(2/delta)
+        lg_q = np.log(len(queries))
+        lg_b = np.log((32 * dbnrm) / beta)
+        alpha = np.sqrt(nf * np.sqrt(lg_u * lg_d) * (lg_q + lg_b))
+
+        bad_case_cntr = 0
+        # sample PMW
+        for j in range(pmw_samples):
+            pmw = PMW(db, num_queries, eps, delta, alpha, beta)
+
+            for q in queries:
+                err = norm(np.subtract(pmw.value(q), q.value(db)), ord=1)
+                if err > alpha:
+                    bad_case_cntr += 1
+
+        assert (beta >= (bad_case_cntr / num_queries))
